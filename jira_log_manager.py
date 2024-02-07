@@ -24,12 +24,6 @@ JIRA_MAP_FILE = "jira issue mapping.xlsx"
 
 # TODO: it is usefull to keep dataframe colums as datetime instead of strings?
 
-logging.basicConfig(
-    filename="issue_not_map.log",
-    filemode="w",
-    level=logging.INFO,
-)
-
 
 def get_user_id() -> str:
     """
@@ -153,7 +147,7 @@ def load_worklog(excel_report: str, req_month: int, req_person: str) -> None:
     )
 
     #  Who has authenticated
-    print(jira.myself())
+    logging.info(jira.myself())
 
     # Read the supporting mapping file
     jira_map: pd.DataFrame = parse_jira_map_file()
