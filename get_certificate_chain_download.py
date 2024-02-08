@@ -7,6 +7,7 @@ Access (AIA) extension, the script will download each certificate in the chain
 and save them as PEM files as well.
 
 """
+
 # Standard library imports
 import os
 import logging
@@ -77,13 +78,16 @@ def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
 class SSLCertificateChainDownloader:
     def __init__(self, output_directory: str = None):
         self.cert_chain = []
-        self._output_directory = output_directory
+        self._output_directory: str = output_directory
+
+        # Create output directory
+        os.makedirs(self.output_directory, exist_ok=True)
 
     @property
     def output_directory(self) -> str:
         return self._output_directory if self._output_directory else "."
 
-    def remove_cacert_pem(self):
+    def remove_cacert_pem(self) -> None:
         """
         Remove certificate files from the current directory.
         """
@@ -93,11 +97,11 @@ class SSLCertificateChainDownloader:
 
         for filename in os.listdir(output_directory):
             if filename.endswith(".crt") or filename == "cacert.pem":
-                filepath = os.path.join(output_directory, filename)
+                filepath: str = os.path.join(output_directory, filename)
                 os.remove(filepath)
                 logging.info(f"Removed {filename}")
 
-    def get_cacert_pem(self):
+    def get_cacert_pem(self) -> None:
         """
         Download the cacert.pem file from the curl.se website.
         """
@@ -147,7 +151,9 @@ class SSLCertificateChainDownloader:
             context = ssl.create_default_context()
             with socket.create_connection((host, port)) as sock:
                 with context.wrap_socket(sock, server_hostname=host) as ssl_socket:
-                    cert_pem = ssl.DER_cert_to_PEM_cert(ssl_socket.getpeercert(True))
+                    cert_pem: str = ssl.DER_cert_to_PEM_cert(
+                        ssl_socket.getpeercert(True)
+                    )
                     cert = x509.load_pem_x509_certificate(
                         cert_pem.encode(), default_backend()
                     )
@@ -210,8 +216,10 @@ class SSLCertificateChainDownloader:
             certificate_chain (List[x509.Certificate]): The certificate chain to write to files.
         """
         os.makedirs(self.output_directory, exist_ok=True)
-        ssl_certificate_filename = "itstezmec01.crt"  
-        ssl_certificate_filepath = os.path.join(self.output_directory, ssl_certificate_filename)
+        ssl_certificate_filename = "itstezmec01.crt"
+        ssl_certificate_filepath = os.path.join(
+            self.output_directory, ssl_certificate_filename
+        )
         for certificate_item in certificate_chain:
             self.save_ssl_certificate(certificate_item, ssl_certificate_filepath)
 
@@ -495,7 +503,6 @@ class SSLCertificateChainDownloader:
 
         if remove_ca_files:
             self.remove_cacert_pem()
-            
 
         if get_ca_cert_pem:
             self.get_cacert_pem()

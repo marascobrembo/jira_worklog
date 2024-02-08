@@ -20,7 +20,9 @@ API_TOKEN = os.getenv("JIRA_APP_API_KEY")
 HOUR_TO_SECONDS = 3600
 
 # Mapping file
-JIRA_MAP_FILE = "jira issue mapping.xlsx"
+JIRA_MAP_FILE = (
+    r"C:\Users\conteo49\OneDrive - Brembo\Jira Worklog Tool\jira issue mapping.xlsx"
+)
 
 # TODO: it is usefull to keep dataframe colums as datetime instead of strings?
 
@@ -140,10 +142,12 @@ def log_work_in_issue(jira, issue, issue_series) -> None:
                 )
 
 
-def load_worklog(excel_report: str, req_month: int, req_person: str) -> None:
+def load_worklog(
+    excel_report: str, req_month: int, req_person: str, ssl_cert: str
+) -> None:
 
     jira: JIRA = JIRA(
-        server=SERVER_URL, token_auth=API_TOKEN, options={"verify": "itstezmec01.crt"}
+        server=SERVER_URL, token_auth=API_TOKEN, options={"verify": ssl_cert}
     )
 
     #  Who has authenticated

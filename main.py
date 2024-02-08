@@ -1,12 +1,15 @@
 import logging
+import os
 import tkinter as tk
 from tkinter import StringVar, filedialog, scrolledtext
+import tempfile
 
 import jira_log_manager as jm
 import text_handler as th
 from get_certificate_chain_download import SSLCertificateChainDownloader
 
 
+# Contstants
 MONTHS: dict[str, int] = {
     "January": 1,
     "February": 2,
@@ -32,7 +35,6 @@ PERSONS: list[str] = [
     "Panzeri Samuele",
 ]
 
-
 HOST_NAME = "itstezmec01"
 
 
@@ -53,12 +55,14 @@ def load_worklog_handler(file_entry, month_var, person_var) -> None:
     print("Selected person:", selected_person)
 
     # Get up-dated ssl certificates
-    downloader = SSLCertificateChainDownloader(output_directory=".")
+    downloader = SSLCertificateChainDownloader(
+        output_directory=os.path.join(tempfile.gettempdir(), "jira_log_temp")
+    )
     downloader.run({"host": HOST_NAME, "remove_ca_files": True})
 
-    jm.load_worklog(file_path, selected_month, selected_person)
+    jm.load_worklog(file_path, selected_month, selected_person, "itstezmec01.crt")
 
-    print("Worklog loaded!")
+    logging.info("Worklog loaded!")
 
 
 class App:
