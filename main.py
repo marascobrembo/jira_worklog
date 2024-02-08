@@ -4,6 +4,8 @@ from tkinter import StringVar, filedialog, scrolledtext
 
 import jira_log_manager as jm
 import text_handler as th
+from get_certificate_chain_download import SSLCertificateChainDownloader
+
 
 MONTHS: dict[str, int] = {
     "January": 1,
@@ -31,6 +33,9 @@ PERSONS: list[str] = [
 ]
 
 
+HOST_NAME = "itstezmec01"
+
+
 def select_file(file_path_string: StringVar) -> None:
     file_path: str = filedialog.askopenfilename(
         filetypes=[("Excel File", "*.xlsx;*.xls")]
@@ -46,6 +51,10 @@ def load_worklog_handler(file_entry, month_var, person_var) -> None:
     print("Excel file path:", file_path)
     print("Selected month:", selected_month)
     print("Selected person:", selected_person)
+
+    # Get up-dated ssl certificates
+    downloader = SSLCertificateChainDownloader(output_directory=".")
+    downloader.run({"host": HOST_NAME, "remove_ca_files": True})
 
     jm.load_worklog(file_path, selected_month, selected_person)
 
