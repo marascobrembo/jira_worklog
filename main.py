@@ -55,12 +55,16 @@ def load_worklog_handler(file_entry, month_var, person_var) -> None:
     print("Selected person:", selected_person)
 
     # Get up-dated ssl certificates
-    downloader = SSLCertificateChainDownloader(
-        output_directory=os.path.join(tempfile.gettempdir(), "jira_log_temp")
-    )
+    out_temp_dir: str = os.path.join(tempfile.gettempdir(), "jira_log_temp")
+    downloader = SSLCertificateChainDownloader(output_directory=out_temp_dir)
     downloader.run({"host": HOST_NAME, "remove_ca_files": True})
 
-    jm.load_worklog(file_path, selected_month, selected_person, "itstezmec01.crt")
+    jm.load_worklog(
+        file_path,
+        selected_month,
+        selected_person,
+        os.path.join(out_temp_dir, "itstezmec01.crt"),
+    )
 
     logging.info("Worklog loaded!")
 
