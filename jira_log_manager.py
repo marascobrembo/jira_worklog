@@ -143,12 +143,8 @@ def log_work_in_issue(jira, issue, issue_series) -> None:
 
 
 def load_worklog(
-    excel_report: str, req_month: int, req_person: str, ssl_cert: str
+    jira: JIRA, excel_report: str, req_month: int, req_person: str
 ) -> None:
-
-    jira: JIRA = JIRA(
-        server=SERVER_URL, token_auth=API_TOKEN, options={"verify": ssl_cert}
-    )
 
     #  Who has authenticated
     logging.info(jira.myself())
@@ -156,7 +152,7 @@ def load_worklog(
     # Read the supporting mapping file
     jira_map: pd.DataFrame = parse_jira_map_file()
 
-    # Read the report excel file
+    # Read the report Excel file
     df: pd.DataFrame = parse_input_excel_report(excel_report, req_person)
 
     # Keep only the requested month and drop the rest
