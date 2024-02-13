@@ -1,6 +1,7 @@
 from app_data import AppData
 from constants import MONTHS
 import logging
+import jira_log_manager as jm
 
 
 class AppLogic:
@@ -18,12 +19,12 @@ class AppLogic:
         logging.info(f"Selected month: {_selected_month}")
         logging.info(f"Selected user: {_selected_user}")
 
-        # jm.load_worklog(
-        #     file_path,
-        #     selected_month,
-        #     selected_person,
-        #     os.path.join(out_temp_dir, "itstezmec01.crt"),
-        # )
+        jm.load_worklog(
+            self._app_data.jira,
+            _file_path,
+            _selected_month,
+            _selected_user
+        )
 
         logging.info("Worklog loaded!")
 

@@ -4,25 +4,8 @@ from jira import JIRA, exceptions
 import pandas as pd
 import getpass
 
-from dotenv import load_dotenv
-import os
+from constants import JIRA_MAP_FILE, HOUR_TO_SECONDS
 
-# Load our .env file to environment
-load_dotenv()
-# curl -H "Authorization: Bearer NDc3NDgwNjg5NjY4OibF0kC1bgbthOAPnNxDUMvS1baE" https://itstezmec01/jira/rest/api/latest/issue/TD-30
-
-# Authentication parameters
-SERVER_URL = "https://itstezmec01/jira/"
-API_TOKEN = os.getenv("JIRA_APP_API_KEY")
-
-
-# Constants
-HOUR_TO_SECONDS = 3600
-
-# Mapping file
-JIRA_MAP_FILE = (
-    r"C:\Users\conteo49\OneDrive - Brembo\Jira Worklog Tool\jira issue mapping.xlsx"
-)
 
 # TODO: it is usefull to keep dataframe colums as datetime instead of strings?
 
@@ -120,12 +103,12 @@ def parse_input_excel_report(excel_path, req_person) -> pd.DataFrame:
 def log_work_in_issue(jira, issue, issue_series) -> None:
 
     # Check if the worklog has been already log, in case ignore it
-    this_author_worklogs_days: list[datetime.datetime] = [
+    this_author_worklogs_days: list[str] = [
         datetime.datetime.strptime(worklog.started, "%Y-%m-%dT%H:%M:%S.%f%z").strftime(
             "%Y-%m-%d"
         )
         for worklog in jira.worklogs(issue)
-        if worklog.author.name == get_user_id()
+        if worklog.author.name == jira.myself()['name']
     ]  # nome del sistema TODO]
 
     for day, time_spent in issue_series.items():
@@ -147,7 +130,7 @@ def load_worklog(
 ) -> None:
 
     #  Who has authenticated
-    logging.info(jira.myself())
+    logging.info(jira.myself()['name'])
 
     # Read the supporting mapping file
     jira_map: pd.DataFrame = parse_jira_map_file()

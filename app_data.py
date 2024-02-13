@@ -7,9 +7,8 @@ import json
 
 from jira import JIRA
 
-from constants import CONFIG_FILE, TEMP_FOLDER_NAME, HOST_NAME
+from constants import CONFIG_FILE, TEMP_FOLDER_NAME, HOST_NAME, SERVER_URL
 from get_certificate_chain_download import SSLCertificateChainDownloader
-from jira_log_manager import SERVER_URL
 
 
 def get_ssl_certificate():
@@ -133,3 +132,7 @@ class AppData:
 
     def get_username(self) -> str:
         return self._jira.myself()['name']
+
+    @property
+    def jira(self):
+        return self._jira
