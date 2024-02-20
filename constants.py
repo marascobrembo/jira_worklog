@@ -1,5 +1,13 @@
 # Contstants
-CONFIG_FILE = r"./resources/config.json"
+from pathlib import Path
+
+
+working_dir : Path =  Path(__file__).resolve().parent
+
+CONFIG_FILE_PATH: str = working_dir / "resources/config.json" 
+JIRA_ICON_PATH: str = working_dir / "resources/jira_logo.ico"
+CHECK_ICON_PATH: str = working_dir / "resources/check.png"
+CROSS_ICON_PATH: str = working_dir / "resources/cross.png"
 
 MONTHS: dict[str, int] = {
     "January": 1,
@@ -28,9 +36,7 @@ USERS_LIST: list[str] = [
 
 HOST_NAME = "itstezmec01"
 
-JIRA_ICON_PATH = "./resources/jira_logo.ico"
-CHECK_ICON_PATH = "./resources/check.png"
-CROSS_ICON_PATH = "./resources/cross.png"
+
 
 TEMP_FOLDER_NAME = "jira_worklog_temp"
 SERVER_URL = "https://itstezmec01/jira/"

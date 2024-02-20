@@ -1,4 +1,3 @@
-import logging
 import os
 import tempfile
 from pathlib import Path
@@ -7,7 +6,7 @@ import json
 
 from jira import JIRA
 
-from constants import CONFIG_FILE, TEMP_FOLDER_NAME, HOST_NAME, SERVER_URL
+from constants import CONFIG_FILE_PATH, TEMP_FOLDER_NAME, HOST_NAME, SERVER_URL
 from get_certificate_chain_download import SSLCertificateChainDownloader
 
 
@@ -17,29 +16,21 @@ def get_ssl_certificate():
     # Get up-dated ssl certificates
     out_temp_dir: str = os.path.join(tempfile.gettempdir(), TEMP_FOLDER_NAME)
     downloader = SSLCertificateChainDownloader(output_directory=out_temp_dir)
-    result = downloader.run({"host": HOST_NAME, "remove_ca_files": True})
+    result: dict[str, list[str]] = downloader.run(
+        {"host": HOST_NAME, "remove_ca_files": True}
+    )
     # Extracting the path from the result
-    certificate_path = Path(result.get('files')[0]) if 'files' in result and result.get('files') else None
+    certificate_path = (
+        Path(result.get("files")[0])
+        if "files" in result and result.get("files")
+        else None
+    )
     return certificate_path
-
-
-def load_config():
-    try:
-        with open(CONFIG_FILE, 'r', encoding="utf-8") as file:
-            return json.load(file)
-    except FileNotFoundError:
-        return {
-            "appearance_theme": "system",
-            "api_key": "",
-            "selected_user": "",
-            "selected_month": "",
-            "excel_file_path": ""
-        }
 
 
 class AppData:
     def __init__(self):
-        self._config = load_config()
+        self.load_config()
 
         self._ssl_certificate_path = get_ssl_certificate()
         self._is_api_token_valid = False
@@ -51,12 +42,14 @@ class AppData:
 
         self._jira = None
 
-    def instantiate_jira_class(self):
-        self._jira = JIRA(server=SERVER_URL,
-                          token_auth=self.api_key_token,
-                          options={"verify": self.ssl_certificate_path})
+    def instantiate_jira_class(self) -> None:
+        self._jira = JIRA(
+            server=SERVER_URL,
+            token_auth=self.api_key_token,
+            options={"verify": self.ssl_certificate_path},
+        )
 
-    def instantiate_view_variables(self):
+    def instantiate_view_variables(self) -> None:
         self.selected_user_var = ctk.StringVar()
         self.selected_user_var.set(self.selected_user)
         self.selected_user_var.trace_add("write", self.update_selected_user)
@@ -69,17 +62,30 @@ class AppData:
         self.selected_file_path_var.set(self.selected_file_path)
         self.selected_file_path_var.trace_add("write", self.update_selected_file_path)
 
-    def update_selected_user(self, var, index, mode):
+    def update_selected_user(self, var, index, mode) -> None:
         self.selected_user = self.selected_user_var.get()
 
-    def update_selected_month(self, var, index, mode):
+    def update_selected_month(self, var, index, mode) -> None:
         self.selected_month = self.selected_month_var.get()
 
-    def update_selected_file_path(self, var, index, mode):
+    def update_selected_file_path(self, var, index, mode) -> None:
         self.selected_file_path = self.selected_file_path_var.get()
 
-    def save_config(self):
-        with open(CONFIG_FILE, 'w', encoding="utf-8") as file:
+    def load_config(self) -> None:
+        try:
+            with open(CONFIG_FILE_PATH, "r", encoding="utf-8") as file:
+                self._config = json.load(file)
+        except FileNotFoundError:
+            self._config: dict[str, str] = {
+                "appearance_theme": "system",
+                "api_key": "",
+                "selected_user": "",
+                "selected_month": "",
+                "excel_file_path": "",
+            }
+
+    def save_config(self) -> None:
+        with open(CONFIG_FILE_PATH, "w", encoding="utf-8") as file:
             json.dump(self._config, file)
 
     @property
@@ -131,7 +137,7 @@ class AppData:
         return self._ssl_certificate_path
 
     def get_username(self) -> str:
-        return self._jira.myself()['name']
+        return self._jira.myself()["name"]
 
     @property
     def jira(self):

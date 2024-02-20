@@ -13,7 +13,7 @@ class AppLogic:
         logging.info("Start button pushed!")
         _file_path: str = self._app_data.selected_file_path
         _selected_month: int = MONTHS[self._app_data.selected_month]
-        _selected_user: str = self._app_data.selected_file_path
+        _selected_user: str = self._app_data.selected_user
 
         logging.info(f"Excel file path: {_file_path}")
         logging.info(f"Selected month: {_selected_month}")

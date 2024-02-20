@@ -1,5 +1,4 @@
-"""
-Download SSL certificate chain and save as PEM files.
+"""Download SSL certificate chain and save as PEM files.
 
 This script connects to a given website, downloads its SSL certificate,
 and saves it as a PEM file. If the certificate has an Authority Information
@@ -32,8 +31,7 @@ CERT_CHAIN = []
 
 # parse arguments
 def parse_arguments(args: Optional[List[str]] = None) -> argparse.Namespace:
-    """
-    Parse command line arguments.
+    """Parse command line arguments.
 
     Returns:
         argparse.Namespace: Parsed arguments.
@@ -88,9 +86,7 @@ class SSLCertificateChainDownloader:
         return self._output_directory if self._output_directory else "."
 
     def remove_cacert_pem(self) -> None:
-        """
-        Remove certificate files from the current directory.
-        """
+        """Remove certificate files from the current directory."""
         logging.info("Removing certificate files from current directory.")
 
         output_directory = self.output_directory if self.output_directory else "."
@@ -102,9 +98,7 @@ class SSLCertificateChainDownloader:
                 logging.info(f"Removed {filename}")
 
     def get_cacert_pem(self) -> None:
-        """
-        Download the cacert.pem file from the curl.se website.
-        """
+        """Download the cacert.pem file from the curl.se website."""
         cacert_pem_url = "https://curl.se/ca/cacert.pem"
         cacert_pem_file = "cacert.pem"
         logging.info("Downloading %s to %s", cacert_pem_url, cacert_pem_file)
@@ -124,8 +118,7 @@ class SSLCertificateChainDownloader:
 
     @staticmethod
     def check_url(host: str) -> Dict[str, Any]:
-        """
-        Check and parse the host provided by the user.
+        """Check and parse the host provided by the user.
 
         Args:
             host (str): The host provided by the user.
@@ -137,8 +130,7 @@ class SSLCertificateChainDownloader:
         return {"host": host, "port": int(port) if port else 443}
 
     def get_certificate(self, host: str, port: int) -> x509.Certificate:
-        """
-        Connect to a server and retrieve the SSL certificate.
+        """Connect to a server and retrieve the SSL certificate.
 
         Args:
             host (str): The host to connect to.
@@ -172,8 +164,7 @@ class SSLCertificateChainDownloader:
             sys.exit(1)
 
     def normalize_subject(self, subject: str) -> str:
-        """
-        Normalize the subject of a certificate.
+        """Normalize the subject of a certificate.
 
         Args:
             subject (str): The subject of the certificate.
@@ -196,8 +187,7 @@ class SSLCertificateChainDownloader:
         ssl_certificate: x509.Certificate,
         file_name: str,
     ) -> None:
-        """
-        Save an SSL certificate to a file.
+        """Save an SSL certificate to a file.
 
         Args:
             ssl_certificate (x509.Certificate): The SSL certificate to save.
@@ -209,8 +199,7 @@ class SSLCertificateChainDownloader:
     def write_chain_to_file(
         self, certificate_chain: List[x509.Certificate], output_dir: str = "."
     ) -> None:
-        """
-        Write a certificate chain to files.
+        """Write a certificate chain to files.
 
         Args:
             certificate_chain (List[x509.Certificate]): The certificate chain to write to files.
@@ -224,8 +213,7 @@ class SSLCertificateChainDownloader:
             self.save_ssl_certificate(certificate_item, ssl_certificate_filepath)
 
     def return_cert_aia(self, ssl_certificate: x509.Certificate) -> x509.Extensions:
-        """
-        Get the Authority Information Access (AIA) extension from a certificate.
+        """Get the Authority Information Access (AIA) extension from a certificate.
 
         Args:
             ssl_certificate (x509.Certificate): The SSL certificate.
@@ -242,8 +230,7 @@ class SSLCertificateChainDownloader:
             return None
 
     def get_certificate_from_uri(self, uri: str) -> x509.Certificate:
-        """
-        Retrieve a certificate from the given URI.
+        """Retrieve a certificate from the given URI.
 
         Args:
             uri (str): The URI to get the certificate from.
@@ -265,8 +252,7 @@ class SSLCertificateChainDownloader:
             return None
 
     def return_cert_aia_list(self, ssl_certificate: x509.Certificate) -> list:
-        """
-        Get the list of AIA URIs from a certificate.
+        """Get the list of AIA URIs from a certificate.
 
         Args:
             ssl_certificate (x509.Certificate): The SSL certificate.
@@ -288,8 +274,7 @@ class SSLCertificateChainDownloader:
         return aia_uri_list
 
     def return_cert_aki(self, ssl_certificate):
-        """
-        Get the Authority Key Identifier (AKI) from a certificate.
+        """Get the Authority Key Identifier (AKI) from a certificate.
 
         Args:
             ssl_certificate (x509.Certificate): The SSL certificate.
@@ -306,8 +291,7 @@ class SSLCertificateChainDownloader:
         return cert_aki
 
     def return_cert_ski(self, ssl_certificate):
-        """
-        Get the Subject Key Identifier (SKI) from a certificate.
+        """Get the Subject Key Identifier (SKI) from a certificate.
 
         Args:
             ssl_certificate (x509.Certificate): The SSL certificate.
@@ -326,8 +310,7 @@ class SSLCertificateChainDownloader:
         filename: str = None,
         ca_cert_text: str = None,
     ) -> Dict[str, str]:
-        """
-        Load the root CA certificate chain from a file or text.
+        """Load the root CA certificate chain from a file or text.
 
         Args:
             filename (str, optional): The file name containing the root CA certificates.
@@ -342,7 +325,7 @@ class SSLCertificateChainDownloader:
         ca_root_store = {}
 
         if filename:
-            with open(filename, "r") as f_ca_cert:
+            with open(filename) as f_ca_cert:
                 ca_cert_text = f_ca_cert.read()
 
         lines = ca_cert_text.splitlines()
@@ -388,8 +371,7 @@ class SSLCertificateChainDownloader:
         depth: int,
         max_depth: int = 4,
     ):
-        """
-        Recursively walk the certificate chain to gather all intermediate and root certificates.
+        """Recursively walk the certificate chain to gather all intermediate and root certificates.
 
         This method takes the SSL certificate, its depth in the certificate chain, and the maximum depth
         allowed for the chain as arguments. It uses the Authority Key Identifier (AKI) and Subject Key
@@ -406,7 +388,6 @@ class SSLCertificateChainDownloader:
             SystemExit: If a certificate cannot be retrieved, if a certificate doesn't have the AIA
                         extension, or if the root CA is not found in the pre-existing root CA store.
         """
-
         if depth <= max_depth:
             cert_aki = self.return_cert_aki(ssl_certificate)
             cert_ski = self.return_cert_ski(ssl_certificate)
@@ -461,8 +442,8 @@ class SSLCertificateChainDownloader:
                         sys.exit(1)
 
     def run(self, args: Union[argparse.Namespace, dict]) -> Dict[str, List[str]]:
-        """
-        Main method that handles the execution of SSLCertificateChainDownloader based on the provided arguments.
+        """Main method that handles the execution of SSLCertificateChainDownloader based on the provided arguments.
+        
         This method takes care of processing input arguments, checking the URL, fetching and walking the certificate chain,
         and saving the certificate chain files.
 
@@ -537,10 +518,7 @@ class SSLCertificateChainDownloader:
 
 
 def main() -> None:
-    """
-    Main function to execute the script. Parses arguments, retrieves the SSL certificate, walks the chain,
-    and writes the certificate chain and PEM-encoded certificates.
-    """
+    """Main function to execute the script. Parses arguments, retrieves the SSL certificate, walks the chain, and writes the certificate chain and PEM-encoded certificates."""
     args = parse_arguments()
 
     log_level = getattr(logging, args.log_level.upper(), None)
