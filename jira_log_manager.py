@@ -4,28 +4,25 @@ from jira import JIRA, exceptions
 import pandas as pd
 import getpass
 
-from constants import JIRA_MAP_FILE, HOUR_TO_SECONDS
+from constants import HOUR_TO_SECONDS
 
 
 # TODO: it is usefull to keep dataframe colums as datetime instead of strings?
 
 
 def get_user_id() -> str:
-    """
-    Get the username of the current user.
+    """Get the username of the current user.
 
     Returns:
         str: The username of the current user.
     """
-
     return getpass.getuser()
 
 
-def parse_jira_map_file() -> pd.DataFrame:
-
+def parse_jira_map_file(jira_map_file) -> pd.DataFrame:
     # First, read the Multi-index rows
     multiindex_rows: pd.DataFrame = pd.read_excel(
-        JIRA_MAP_FILE,
+        jira_map_file,
         header=None,
         index_col=None,
         usecols="A:C",
@@ -37,7 +34,7 @@ def parse_jira_map_file() -> pd.DataFrame:
 
     jira_map: pd.DataFrame = (
         pd.read_excel(
-            JIRA_MAP_FILE,
+            jira_map_file,
             index_col=None,
         )
     ).dropna(how="all", axis=0)
@@ -56,7 +53,6 @@ def parse_jira_map_file() -> pd.DataFrame:
 
 
 def parse_input_excel_report(excel_path, req_person) -> pd.DataFrame:
-
     # First, read the Multi-index rows
     multiindex_rows: pd.DataFrame = pd.read_excel(
         excel_path,
@@ -101,14 +97,13 @@ def parse_input_excel_report(excel_path, req_person) -> pd.DataFrame:
 
 
 def log_work_in_issue(jira, issue, issue_series) -> None:
-
     # Check if the worklog has been already log, in case ignore it
     this_author_worklogs_days: list[str] = [
         datetime.datetime.strptime(worklog.started, "%Y-%m-%dT%H:%M:%S.%f%z").strftime(
             "%Y-%m-%d"
         )
         for worklog in jira.worklogs(issue)
-        if worklog.author.name == jira.myself()['name']
+        if worklog.author.name == jira.myself()["name"]
     ]  # nome del sistema TODO]
 
     for day, time_spent in issue_series.items():
@@ -126,14 +121,13 @@ def log_work_in_issue(jira, issue, issue_series) -> None:
 
 
 def load_worklog(
-    jira: JIRA, excel_report: str, req_month: int, req_person: str
+    jira: JIRA, excel_report: str, jira_map_file: str, req_month: int, req_person: str
 ) -> None:
-
     #  Who has authenticated
-    logging.info(jira.myself()['name'])
+    logging.info(jira.myself()["name"])
 
     # Read the supporting mapping file
-    jira_map: pd.DataFrame = parse_jira_map_file()
+    jira_map: pd.DataFrame = parse_jira_map_file(jira_map_file)
 
     # Read the report Excel file
     df: pd.DataFrame = parse_input_excel_report(excel_report, req_person)

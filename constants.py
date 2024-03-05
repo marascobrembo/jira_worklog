@@ -2,9 +2,9 @@
 from pathlib import Path
 
 
-working_dir : Path =  Path(__file__).resolve().parent
+working_dir: Path = Path(__file__).resolve().parent
 
-CONFIG_FILE_PATH: str = working_dir / "resources/config.json" 
+CONFIG_FILE_PATH: str = working_dir / "resources/config.json"
 JIRA_ICON_PATH: str = working_dir / "resources/jira_logo.ico"
 CHECK_ICON_PATH: str = working_dir / "resources/check.png"
 CROSS_ICON_PATH: str = working_dir / "resources/cross.png"
@@ -37,14 +37,8 @@ USERS_LIST: list[str] = [
 HOST_NAME = "itstezmec01"
 
 
-
 TEMP_FOLDER_NAME = "jira_worklog_temp"
 SERVER_URL = "https://itstezmec01/jira/"
 
 # Constants
 HOUR_TO_SECONDS = 3600
-
-# Mapping file
-JIRA_MAP_FILE = (
-    r"C:\Users\conteo49\OneDrive - Brembo\Jira Worklog Tool\jira issue mapping.xlsx"
-)

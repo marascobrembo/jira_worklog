@@ -82,6 +82,7 @@ class AppData:
                 "selected_user": "",
                 "selected_month": "",
                 "excel_file_path": "",
+                "jira_map_file": "",
             }
 
     def save_config(self) -> None:
@@ -142,3 +143,7 @@ class AppData:
     @property
     def jira(self):
         return self._jira
+
+    @property
+    def jira_map_file(self) -> str:
+        return self._config["jira_map_file"]

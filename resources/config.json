@@ -3,5 +3,6 @@
     "api_key_token": "",
     "selected_user": "",
     "selected_month": "",
-    "selected_file_path": ""
+    "selected_file_path": "",
+    "jira_map_file": "\\\\brembo.org\\fs-ita\\Progetti\\Advanced_R&D\\RD_Sistemi\\USERS\\lMarasco\\Jira Worklog Tool\\jira issue mapping.xlsx"
 }

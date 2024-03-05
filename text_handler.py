@@ -3,7 +3,7 @@ import customtkinter
 
 
 class TextHandler(logging.Handler):
-    """This class allows you to log to a Tkinter Text or ScrolledText widget"""
+    """This class allows you to log to a Tkinter Text or ScrolledText widget."""
 
     def __init__(self, text: customtkinter.CTkTextbox):
         # run the regular Handler __init__
