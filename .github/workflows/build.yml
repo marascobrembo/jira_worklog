@@ -54,5 +54,6 @@ jobs:
         RELEASE_URL: ${{needs.createrelease.outputs.release_url}}
       with:
         upload_url: $RELEASE_URL
-        asset_path: ./dist/Jira LogWork.exe
-        asset_name: Jira LogWork.exe
+        asset_path: ./dist/Jira LogWork
+        asset_name: Jira LogWork
+        asset_content_type: application/zip
