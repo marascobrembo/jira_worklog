@@ -9,7 +9,7 @@ class TextHandler(logging.Handler):
         # run the regular Handler __init__
         logging.Handler.__init__(self)
         # Store a reference to the Text it will log to
-        self.text = text
+        self.text: customtkinter.CTkTextbox = text
 
     def emit(self, record) -> None:
         msg: str = self.format(record)
@@ -24,3 +24,15 @@ class TextHandler(logging.Handler):
 
         # This is necessary because we can't modify the Text from other threads
         self.text.after(0, append)
+
+
+logger: logging.Logger = logging.getLogger()
+
+
+def setup_logging() -> None:
+    # Basic logger configuration
+    logging.basicConfig(
+        filename="issue_not_map.log",
+        filemode="w",
+        level=logging.INFO,
+    )

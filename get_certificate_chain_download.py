@@ -25,6 +25,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.x509.oid import ExtensionOID
 
+import custom_exceptions as ce
+
 VERSION = "0.1.8"
 CERT_CHAIN = []
 
@@ -139,29 +141,14 @@ class SSLCertificateChainDownloader:
         Returns:
             x509.Certificate: The SSL certificate of the server.
         """
-        try:
-            context = ssl.create_default_context()
-            with socket.create_connection((host, port)) as sock:
-                with context.wrap_socket(sock, server_hostname=host) as ssl_socket:
-                    cert_pem: str = ssl.DER_cert_to_PEM_cert(
-                        ssl_socket.getpeercert(True)
-                    )
-                    cert = x509.load_pem_x509_certificate(
-                        cert_pem.encode(), default_backend()
-                    )
-            return cert
-        except ConnectionRefusedError:
-            logging.error("Connection refused to %s:%s", host, port)
-            sys.exit(1)
-        except ssl.SSLError as e:
-            logging.error("SSL error: %s", e)
-            sys.exit(1)
-        except socket.timeout:
-            logging.error("Connection timed out to %s:%s", host, port)
-            sys.exit(1)
-        except socket.gaierror:
-            logging.error("Hostname could not be resolved: %s", host)
-            sys.exit(1)
+        context: ssl.SSLContext = ssl.create_default_context()
+        with socket.create_connection((host, port)) as sock:
+            with context.wrap_socket(sock, server_hostname=host) as ssl_socket:
+                cert_pem: str = ssl.DER_cert_to_PEM_cert(ssl_socket.getpeercert(True))
+                cert: x509.Certificate = x509.load_pem_x509_certificate(
+                    cert_pem.encode(), default_backend()
+                )
+        return cert
 
     def normalize_subject(self, subject: str) -> str:
         """Normalize the subject of a certificate.
@@ -222,8 +209,10 @@ class SSLCertificateChainDownloader:
             x509.Extensions: The AIA extension or None if not found.
         """
         try:
-            aia = ssl_certificate.extensions.get_extension_for_oid(
-                ExtensionOID.AUTHORITY_INFORMATION_ACCESS
+            aia: x509.Extension[x509.ExtensionType] = (
+                ssl_certificate.extensions.get_extension_for_oid(
+                    ExtensionOID.AUTHORITY_INFORMATION_ACCESS
+                )
             )
             return aia
         except x509.ExtensionNotFound:
@@ -243,8 +232,8 @@ class SSLCertificateChainDownloader:
                 if response.getcode() != 200:
                     return None
                 aia_content = response.read()
-                ssl_certificate = ssl.DER_cert_to_PEM_cert(aia_content)
-                cert = x509.load_pem_x509_certificate(
+                ssl_certificate: str = ssl.DER_cert_to_PEM_cert(aia_content)
+                cert: x509.Certificate = x509.load_pem_x509_certificate(
                     ssl_certificate.encode("ascii"), default_backend()
                 )
                 return cert
@@ -328,16 +317,16 @@ class SSLCertificateChainDownloader:
             with open(filename) as f_ca_cert:
                 ca_cert_text = f_ca_cert.read()
 
-        lines = ca_cert_text.splitlines()
-        line_count = len(lines)
+        lines: list[str] = ca_cert_text.splitlines()
+        line_count: int = len(lines)
         index = 0
 
         previous_line = ""
         current_line = ""
 
         while index < line_count:
-            previous_line = current_line
-            current_line = lines[index]
+            previous_line: str = current_line
+            current_line: str = lines[index]
 
             if re.search("^\={5,}", current_line):
                 root_ca_cert = ""
@@ -353,10 +342,10 @@ class SSLCertificateChainDownloader:
                 root_ca_cert += lines[index] + "\n"
                 index += 1
 
-                cert = x509.load_pem_x509_certificate(
+                cert: x509.Certificate = x509.load_pem_x509_certificate(
                     root_ca_cert.encode(), default_backend()
                 )
-                root_ca_name = cert.subject.rfc4514_string()
+                root_ca_name: str = cert.subject.rfc4514_string()
 
                 ca_root_store[root_ca_name] = root_ca_cert
             else:
@@ -443,7 +432,7 @@ class SSLCertificateChainDownloader:
 
     def run(self, args: Union[argparse.Namespace, dict]) -> Dict[str, List[str]]:
         """Main method that handles the execution of SSLCertificateChainDownloader based on the provided arguments.
-        
+
         This method takes care of processing input arguments, checking the URL, fetching and walking the certificate chain,
         and saving the certificate chain files.
 
@@ -473,7 +462,9 @@ class SSLCertificateChainDownloader:
                 "Invalid argument type. Expected argparse.Namespace or dict."
             )
 
-        self.parsed_url = SSLCertificateChainDownloader.check_url(self.host)
+        self.parsed_url: Dict[str, Any] = SSLCertificateChainDownloader.check_url(
+            self.host
+        )
 
         if isinstance(args, argparse.Namespace):
             remove_ca_files = args.remove_ca_files
@@ -488,17 +479,34 @@ class SSLCertificateChainDownloader:
         if get_ca_cert_pem:
             self.get_cacert_pem()
 
-        ssl_certificate = self.get_certificate(
-            self.parsed_url["host"], self.parsed_url["port"]
-        )
+        try:
+            ssl_certificate: x509.Certificate = self.get_certificate(
+                self.parsed_url["host"], self.parsed_url["port"]
+            )
+        except ConnectionRefusedError:
+            raise ce.NetworkConnectionError(
+                f'Connection refused to {self.parsed_url["host"]}:{self.parsed_url["port"]}'
+            )
 
-        aia = self.return_cert_aia(ssl_certificate)
+        except ssl.SSLError as e:
+            raise ce.NetworkConnectionError(f"SSL error: {e}")
+
+        except socket.timeout:
+            raise ce.NetworkConnectionError(
+                f'Connection timed out to {self.parsed_url["host"]}:{self.parsed_url["port"]}'
+            )
+
+        except socket.gaierror:
+            raise ce.NetworkConnectionError(
+                f'Hostname could not be resolved: {self.parsed_url["host"]}'
+            )
+
+        aia: x509.Extensions = self.return_cert_aia(ssl_certificate)
 
         if aia is not None and not self.return_cert_aia(ssl_certificate):
-            logging.error(
+            raise ce.AIAError(
                 "Could not find AIA, possible decryption taking place upstream?"
             )
-            sys.exit(1)
 
         self.cert_chain.append(ssl_certificate)
 
@@ -519,7 +527,7 @@ class SSLCertificateChainDownloader:
 
 def main() -> None:
     """Main function to execute the script. Parses arguments, retrieves the SSL certificate, walks the chain, and writes the certificate chain and PEM-encoded certificates."""
-    args = parse_arguments()
+    args: argparse.Namespace = parse_arguments()
 
     log_level = getattr(logging, args.log_level.upper(), None)
     if not isinstance(log_level, int):

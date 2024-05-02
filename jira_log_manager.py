@@ -104,7 +104,7 @@ def log_work_in_issue(jira, issue, issue_series) -> None:
         )
         for worklog in jira.worklogs(issue)
         if worklog.author.name == jira.myself()["name"]
-    ]  # nome del sistema TODO]
+    ]
 
     for day, time_spent in issue_series.items():
         if day.strftime("%Y-%m-%d") not in this_author_worklogs_days:
@@ -118,6 +118,8 @@ def log_work_in_issue(jira, issue, issue_series) -> None:
                 logging.warning(
                     "Cannot log work for the issue %s, issue is closed.", issue
                 )
+        else:
+            pass
 
 
 def load_worklog(

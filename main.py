@@ -1,18 +1,10 @@
-import logging
-
 from app_data import AppData
 from app_logic import AppLogic
 from app_gui import App
+import logging_conf
 
 
 def main() -> None:
-    # Basic logger configuration
-    logging.basicConfig(
-        filename="issue_not_map.log",
-        filemode="w",
-        level=logging.INFO,
-    )
-
     # Create the Gui
     app_data = AppData()
     app_logic = AppLogic(app_data)
@@ -22,4 +14,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # Logger configuration
+    logging_conf.setup_logging()
+
     main()

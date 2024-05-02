@@ -1,11 +1,10 @@
-import logging
-import threading
 import customtkinter as ctk
 from PIL import Image
 from CTkMessagebox import CTkMessagebox
 
 from app_data import AppData
 from app_logic import AppLogic
+from logging_conf import logger
 
 from constants import (
     MONTHS,
@@ -14,7 +13,7 @@ from constants import (
     CHECK_ICON_PATH,
     CROSS_ICON_PATH,
 )
-import text_handler as th
+import logging_conf as lg
 
 
 def select_file(excel_file_path: ctk.StringVar) -> None:
@@ -28,9 +27,9 @@ def select_file(excel_file_path: ctk.StringVar) -> None:
 class App:
     def __init__(self, data: AppData, app_logic: AppLogic):
         self.api_validity_icon = None
-        self._app_data = data
-        self._app_logic = app_logic
-        self._gui = self.create_gui()
+        self._app_data: AppData = data
+        self._app_logic: AppLogic = app_logic
+        self._gui: ctk.CTk = self.create_gui()
         # Collega la funzione on_closing all'evento di chiusura della finestra
         self._gui.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -132,7 +131,7 @@ class App:
         start_worklog_load_button = ctk.CTkButton(
             main_window,
             text="Load Worklog",
-            command=threading.Thread(target=self._app_logic.load_worklog_handler).start,
+            command=self._app_logic.load_worklog_handler,
         )
         start_worklog_load_button.pack(pady=20)
 
@@ -147,11 +146,15 @@ class App:
         log_text.pack(pady=10)
 
         # Create textLogger
-        text_handler = th.TextHandler(log_text)
+        text_handler = lg.TextHandler(log_text)
 
         # Add the handler to logger
-        logger: logging.Logger = logging.getLogger()
         logger.addHandler(text_handler)
+
+        # Button to save the log
+        # save_log_button = ctk.CTkButton(            main_window,            text="Save Log",
+        # command=self._app_logic.save_log,    )
+        # save_log_button.pack(pady=20)
 
         return main_window
 

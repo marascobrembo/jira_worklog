@@ -5,15 +5,17 @@ import customtkinter as ctk
 import json
 
 from jira import JIRA
+from logging_conf import logger
 
 from constants import CONFIG_FILE_PATH, TEMP_FOLDER_NAME, HOST_NAME, SERVER_URL
 from get_certificate_chain_download import SSLCertificateChainDownloader
 
 
-def get_ssl_certificate():
+def get_ssl_certificate() -> Path:
     # TODO: gestire eccezioni in caso di fallimento nel download
 
     # Get up-dated ssl certificates
+
     out_temp_dir: str = os.path.join(tempfile.gettempdir(), TEMP_FOLDER_NAME)
     downloader = SSLCertificateChainDownloader(output_directory=out_temp_dir)
     result: dict[str, list[str]] = downloader.run(
@@ -32,7 +34,7 @@ class AppData:
     def __init__(self):
         self.load_config()
 
-        self._ssl_certificate_path = get_ssl_certificate()
+        self._ssl_certificate_path: Path = None
         self._is_api_token_valid = False
         self._num_available_licenses = 0
 
@@ -43,10 +45,11 @@ class AppData:
         self._jira = None
 
     def instantiate_jira_class(self) -> None:
+        self._ssl_certificate_path: Path = get_ssl_certificate()
         self._jira = JIRA(
             server=SERVER_URL,
             token_auth=self.api_key_token,
-            options={"verify": self.ssl_certificate_path},
+            options={"verify": self._ssl_certificate_path},
         )
 
     def instantiate_view_variables(self) -> None:
