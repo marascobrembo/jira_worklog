@@ -1,6 +1,6 @@
-# Contstants
-from pathlib import Path
+"""Contstants."""
 
+from pathlib import Path
 
 working_dir: Path = Path(__file__).resolve().parent
 

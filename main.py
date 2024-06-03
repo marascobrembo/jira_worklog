@@ -1,7 +1,7 @@
-from app_data import AppData
-from app_logic import AppLogic
-from app_gui import App
 import logging_conf
+from app_data import AppData
+from app_gui import App
+from app_logic import AppLogic
 
 
 def main() -> None:

@@ -35,8 +35,6 @@ class AppLogic:
 
         _load_worklog_thread.start()
 
-        logger.info("Worklog loaded!")
-
     def check_api_token_validity(self) -> None:
         try:
             self._app_data.instantiate_jira_class()

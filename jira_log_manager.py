@@ -5,6 +5,7 @@ import pandas as pd
 import getpass
 
 from constants import HOUR_TO_SECONDS
+from logging_conf import logger
 
 
 # TODO: it is usefull to keep dataframe colums as datetime instead of strings?
@@ -115,7 +116,7 @@ def log_work_in_issue(jira, issue, issue_series) -> None:
                     started=day,
                 )
             except exceptions.JIRAError:
-                logging.warning(
+                logger.warning(
                     "Cannot log work for the issue %s, issue is closed.", issue
                 )
         else:
@@ -126,7 +127,7 @@ def load_worklog(
     jira: JIRA, excel_report: str, jira_map_file: str, req_month: int, req_person: str
 ) -> None:
     #  Who has authenticated
-    logging.info(jira.myself()["name"])
+    logger.info(jira.myself()["name"])
 
     # Read the supporting mapping file
     jira_map: pd.DataFrame = parse_jira_map_file(jira_map_file)
@@ -146,22 +147,24 @@ def load_worklog(
     df_month: pd.DataFrame = df.loc[
         :,
         first_day_of_req_month:last_day_of_req_month,
-    ]
+    ].dropna(how="all", axis=0)
 
     # Take the Jira issue associated with the row and signalize the ones with no map
     row_without_jira_issue: list[tuple] = list(
         set(df_month.index) - set(jira_map.index)
     )
-    logging.info(str(row_without_jira_issue).strip("[]"))
+    logger.info("\n".join(["".join(str(i)) for i in row_without_jira_issue]))
 
     df_month_to_log: pd.DataFrame = df_month[
         df_month.index.isin(jira_map.index.to_list())
     ]
 
-    # For each day log the related workload if not nan
+    # For each day, log the related workload if not nan
     df_month_to_log.apply(
         lambda x: log_work_in_issue(
             jira, issue=jira_map[x.name], issue_series=x.dropna()
         ),
         axis=1,
     )
+
+    logger.info("Worklog loaded!")
