@@ -1,5 +1,17 @@
 {
     "appearance_theme": "system",
+    "users_list": [
+        "Longoni Samuele",
+        "Papi Lorenzo",
+        "Perrino Francesco",
+        "Di Palma Federico",
+        "Marasco Leonardo",
+        "Iuculano Matilde",
+        "Panzeri Samuele",
+        "Alessandro Costa"
+    ],
+    "server_url": "https://itstezmec01/jira/",
+    "host_name": "itstezmec01",
     "api_key_token": "",
     "selected_user": "",
     "selected_month": "",

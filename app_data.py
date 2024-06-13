@@ -1,17 +1,16 @@
+import json
 import os
 import tempfile
 from pathlib import Path
+
 import customtkinter as ctk
-import json
-
 from jira import JIRA
-from logging_conf import logger
 
-from constants import CONFIG_FILE_PATH, TEMP_FOLDER_NAME, HOST_NAME, SERVER_URL
+from constants import CONFIG_FILE_PATH, TEMP_FOLDER_NAME
 from get_certificate_chain_download import SSLCertificateChainDownloader
 
 
-def get_ssl_certificate() -> Path:
+def get_ssl_certificate(host_name: str) -> Path:
     # TODO: gestire eccezioni in caso di fallimento nel download
 
     # Get up-dated ssl certificates
@@ -19,7 +18,7 @@ def get_ssl_certificate() -> Path:
     out_temp_dir: str = os.path.join(tempfile.gettempdir(), TEMP_FOLDER_NAME)
     downloader = SSLCertificateChainDownloader(output_directory=out_temp_dir)
     result: dict[str, list[str]] = downloader.run(
-        {"host": HOST_NAME, "remove_ca_files": True}
+        {"host": host_name, "remove_ca_files": True}
     )
     # Extracting the path from the result
     certificate_path = (
@@ -45,9 +44,11 @@ class AppData:
         self._jira = None
 
     def instantiate_jira_class(self) -> None:
-        self._ssl_certificate_path: Path = get_ssl_certificate()
+        self._ssl_certificate_path: Path = get_ssl_certificate(
+            self._config["host_name"]
+        )
         self._jira = JIRA(
-            server=SERVER_URL,
+            server=self._config["server_url"],
             token_auth=self.api_key_token,
             options={"verify": self._ssl_certificate_path},
         )
@@ -76,7 +77,7 @@ class AppData:
 
     def load_config(self) -> None:
         try:
-            with open(CONFIG_FILE_PATH, "r", encoding="utf-8") as file:
+            with open(CONFIG_FILE_PATH, encoding="utf-8") as file:
                 self._config = json.load(file)
         except FileNotFoundError:
             self._config: dict[str, str] = {
@@ -150,3 +151,7 @@ class AppData:
     @property
     def jira_map_file(self) -> str:
         return self._config["jira_map_file"]
+
+    @property
+    def config(self) -> dict[str, str]:
+        return self._config

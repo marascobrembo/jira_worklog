@@ -24,21 +24,8 @@ MONTHS: dict[str, int] = {
     "December": 12,
 }
 
-USERS_LIST: list[str] = [
-    "Longoni Samuele",
-    "Papi Lorenzo",
-    "Perrino Francesco",
-    "Di Palma Federico",
-    "Marasco Leonardo",
-    "Iuculano Matilde",
-    "Panzeri Samuele",
-]
-
-HOST_NAME = "itstezmec01"
-
 
 TEMP_FOLDER_NAME = "jira_worklog_temp"
-SERVER_URL = "https://itstezmec01/jira/"
 
 # Constants
 HOUR_TO_SECONDS = 3600

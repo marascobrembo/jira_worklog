@@ -1,19 +1,17 @@
 import customtkinter as ctk
-from PIL import Image
 from CTkMessagebox import CTkMessagebox
+from PIL import Image
 
+import logging_conf as lg
 from app_data import AppData
 from app_logic import AppLogic
-from logging_conf import logger
-
 from constants import (
-    MONTHS,
-    USERS_LIST,
-    JIRA_ICON_PATH,
     CHECK_ICON_PATH,
     CROSS_ICON_PATH,
+    JIRA_ICON_PATH,
+    MONTHS,
 )
-import logging_conf as lg
+from logging_conf import logger
 
 
 def select_file(excel_file_path: ctk.StringVar) -> None:
@@ -64,7 +62,7 @@ class App:
         user_selection_menu = ctk.CTkComboBox(
             user_month_selection_box,
             variable=self._app_data.selected_user_var,
-            values=USERS_LIST,
+            values=self._app_data.config["users_list"],
             state="readonly",
         )
         user_selection_menu.grid(row=0, column=1, padx=0, pady=10)

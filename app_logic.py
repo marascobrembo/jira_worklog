@@ -1,9 +1,12 @@
 import threading
+
+from jira.exceptions import JIRAError
+
+import custom_exceptions as ce
+import jira_log_manager as jm
 from app_data import AppData
 from constants import MONTHS
 from logging_conf import logger
-import jira_log_manager as jm
-import custom_exceptions as ce
 
 
 class AppLogic:
@@ -42,6 +45,6 @@ class AppLogic:
                 f"Successfully connected to Jira as user {self._app_data.get_username()}"
             )
             self._app_data.is_api_token_valid = True
-        except ce.JiraConnectionError as e:
+        except (ce.JiraConnectionError, JIRAError) as e:
             logger.error(e)
             self._app_data.is_api_token_valid = False
