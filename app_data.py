@@ -1,12 +1,20 @@
 import json
 import os
+import subprocess
 import tempfile
 from pathlib import Path
+from typing import Union
 
 import customtkinter as ctk
 from jira import JIRA
 
-from constants import CONFIG_FILE_PATH, TEMP_FOLDER_NAME
+from constants import (
+    CLOUD_CA_CERT_PATH,
+    CONFIG_FILE_PATH,
+    JIRA_MODE,
+    SELF_HOSTED_CA_CERT_PATH,
+    TEMP_FOLDER_NAME,
+)
 from get_certificate_chain_download import SSLCertificateChainDownloader
 
 
@@ -32,24 +40,37 @@ def get_ssl_certificate(host_name: str) -> Path:
 class AppData:
     def __init__(self):
         self.load_config()
+        self._user_email: str = subprocess.check_output(
+            ["whoami", "/upn"], text=True
+        ).rstrip()
 
         self._ssl_certificate_path: Path = None
         self._is_api_token_valid = False
         self._num_available_licenses = 0
+        self._jira_mode = next(iter(JIRA_MODE))
 
         self.selected_file_path_var = None
         self.selected_month_var = None
         self.selected_user_var = None
+        self.progress_bar_var = None
 
         self._jira = None
 
-    def instantiate_jira_class(self) -> None:
-        self._ssl_certificate_path: Path = get_ssl_certificate(
-            self._config["host_name"]
-        )
+    def instantiate_jira_class_self_hosted(self) -> None:
+        # self._ssl_certificate_path: Path = get_ssl_certificate(self._config["host_name"])
+        self._ssl_certificate_path: Path = Path(SELF_HOSTED_CA_CERT_PATH)
         self._jira = JIRA(
-            server=self._config["server_url"],
+            server=self._config["server_url_self_hosted"],
             token_auth=self.api_key_token,
+            options={"verify": self._ssl_certificate_path},
+        )
+
+    def instantiate_jira_class_cloud(self) -> None:
+        self._ssl_certificate_path: Path = Path(CLOUD_CA_CERT_PATH)
+
+        self._jira = JIRA(
+            server=self._config["server_url_cloud"],
+            basic_auth=(self._user_email, self.api_key_token),
             options={"verify": self._ssl_certificate_path},
         )
 
@@ -66,6 +87,13 @@ class AppData:
         self.selected_file_path_var.set(self.selected_file_path)
         self.selected_file_path_var.trace_add("write", self.update_selected_file_path)
 
+        self.jira_mode_var = ctk.IntVar()
+        self.jira_mode_var.set(self.jira_mode)
+        self.jira_mode_var.trace_add("write", self.update_jira_mode)
+
+        self.progress_bar_var = ctk.DoubleVar()
+        self.progress_bar_var.set(0)
+
     def update_selected_user(self, var, index, mode) -> None:
         self.selected_user = self.selected_user_var.get()
 
@@ -74,6 +102,9 @@ class AppData:
 
     def update_selected_file_path(self, var, index, mode) -> None:
         self.selected_file_path = self.selected_file_path_var.get()
+
+    def update_jira_mode(self, var, index, mode) -> None:
+        self.jira_mode = self.jira_mode_var.get()
 
     def load_config(self) -> None:
         try:
@@ -122,8 +153,16 @@ class AppData:
         return self._is_api_token_valid
 
     @is_api_token_valid.setter
-    def is_api_token_valid(self, value: bool):
-        self._is_api_token_valid = value
+    def is_api_token_valid(self, value: bool) -> None:
+        self._is_api_token_valid: bool = value
+
+    @property
+    def jira_mode(self) -> int:
+        return self._jira_mode
+
+    @jira_mode.setter
+    def jira_mode(self, value: int) -> None:
+        self._jira_mode: int = value
 
     @property
     def appearance_theme(self) -> str:
@@ -131,21 +170,27 @@ class AppData:
 
     @property
     def api_key_token(self) -> str:
-        return self._config["api_key_token"]
+        if self.jira_mode == 0:
+            return self._config["api_key_token_cloud"]
+        elif self.jira_mode == 1:
+            return self._config["api_key_token_self_hosted"]
 
     @api_key_token.setter
-    def api_key_token(self, value):
-        self._config["api_key_token"] = value
+    def api_key_token(self, value) -> None:
+        if self.jira_mode == 0:
+            self._config["api_key_token_cloud"] = value
+        elif self.jira_mode == 1:
+            self._config["api_key_token_self_hosted"] = value
 
     @property
     def ssl_certificate_path(self) -> Path:
         return self._ssl_certificate_path
 
     def get_username(self) -> str:
-        return self._jira.myself()["name"]
+        return self._jira.myself()["displayName"]
 
     @property
-    def jira(self):
+    def jira(self) -> Union[None, JIRA]:
         return self._jira
 
     @property

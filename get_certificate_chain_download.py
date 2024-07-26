@@ -8,18 +8,18 @@ and save them as PEM files as well.
 """
 
 # Standard library imports
-import os
-import logging
-import re
-import ssl
-import socket
-import sys
-from typing import Any, Dict, List, Optional, Union
-from urllib.request import urlopen
-from urllib.error import HTTPError, URLError
-
 # Third-party library imports
 import argparse
+import logging
+import os
+import re
+import socket
+import ssl
+import sys
+from typing import Any, Dict, List, Optional, Union
+from urllib.error import HTTPError, URLError
+from urllib.request import urlopen
+
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -192,7 +192,7 @@ class SSLCertificateChainDownloader:
             certificate_chain (List[x509.Certificate]): The certificate chain to write to files.
         """
         os.makedirs(self.output_directory, exist_ok=True)
-        ssl_certificate_filename = "itstezmec01.crt"
+        ssl_certificate_filename = "Forcepoint Cloud CA.crt"
         ssl_certificate_filepath = os.path.join(
             self.output_directory, ssl_certificate_filename
         )
@@ -393,7 +393,9 @@ class SSLCertificateChainDownloader:
                 aia_uri_list = self.return_cert_aia_list(ssl_certificate)
                 if aia_uri_list:
                     for item in aia_uri_list:
-                        next_cert = self.get_certificate_from_uri(item)
+                        next_cert: x509.Certificate = self.get_certificate_from_uri(
+                            item
+                        )
 
                         if next_cert is not None:
                             self.cert_chain.append(next_cert)
@@ -403,16 +405,22 @@ class SSLCertificateChainDownloader:
                             sys.exit(1)
                 else:
                     logging.warning("Certificate didn't have AIA.")
-                    ca_root_store = self.load_root_ca_cert_chain("cacert.pem")
+                    ca_root_store: Dict[str, str] = self.load_root_ca_cert_chain(
+                        "cacert.pem"
+                    )
                     root_ca_cn = None
 
                     for root_ca in ca_root_store:
                         try:
-                            root_ca_certificate_pem = ca_root_store[root_ca]
-                            root_ca_certificate = x509.load_pem_x509_certificate(
-                                root_ca_certificate_pem.encode("ascii")
+                            root_ca_certificate_pem: str = ca_root_store[root_ca]
+                            root_ca_certificate: x509.Certificate = (
+                                x509.load_pem_x509_certificate(
+                                    root_ca_certificate_pem.encode("ascii")
+                                )
                             )
-                            root_ca_ski = self.return_cert_ski(root_ca_certificate)
+                            root_ca_ski: x509.Extension[x509.ExtensionType] = (
+                                self.return_cert_ski(root_ca_certificate)
+                            )
                             root_ca_ski_value = root_ca_ski._value.digest
 
                             if root_ca_ski_value == cert_aki_value:

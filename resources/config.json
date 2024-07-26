@@ -8,11 +8,13 @@
         "Marasco Leonardo",
         "Iuculano Matilde",
         "Panzeri Samuele",
-        "Alessandro Costa"
+        "Costa Alessandro"
     ],
-    "server_url": "https://itstezmec01/jira/",
-    "host_name": "itstezmec01",
-    "api_key_token": "",
+    "server_url_self_hosted": "https://itstezmec01/jira/",
+    "host_name_self_hosted": "itstezmec01",
+    "api_key_token_self_hosted": "",
+    "server_url_cloud": "https://brembo.atlassian.net",
+    "api_key_token_cloud": "",
     "selected_user": "",
     "selected_month": "",
     "selected_file_path": "",

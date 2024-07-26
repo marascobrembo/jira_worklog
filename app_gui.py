@@ -1,3 +1,7 @@
+import asyncio
+import threading
+from typing import Union
+
 import customtkinter as ctk
 from CTkMessagebox import CTkMessagebox
 from PIL import Image
@@ -9,6 +13,7 @@ from constants import (
     CHECK_ICON_PATH,
     CROSS_ICON_PATH,
     JIRA_ICON_PATH,
+    JIRA_MODE,
     MONTHS,
 )
 from logging_conf import logger
@@ -27,6 +32,11 @@ class App:
         self.api_validity_icon = None
         self._app_data: AppData = data
         self._app_logic: AppLogic = app_logic
+
+        # Start the asyncio event loop in a separate thread
+        self.loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
+        threading.Thread(target=self.start_event_loop, daemon=True).start()
+
         self._gui: ctk.CTk = self.create_gui()
         # Collega la funzione on_closing all'evento di chiusura della finestra
         self._gui.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -37,13 +47,17 @@ class App:
         # Chiudi la finestra
         self._gui.destroy()
 
+    def start_event_loop(self) -> None:
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
     def create_gui(self) -> ctk.CTk:
         main_window = ctk.CTk()
         main_window.title("Jira workload logging tool")
 
         ctk.set_appearance_mode(self._app_data.appearance_theme)
         main_window.geometry("550x670")
-        main_window.resizable(width=False, height=False)
+        # main_window.resizable(width=False, height=False)
         main_window.iconbitmap(True, JIRA_ICON_PATH)
 
         self._app_data.instantiate_view_variables()
@@ -112,17 +126,36 @@ class App:
         api_setting_box = ctk.CTkFrame(main_window)
         api_setting_box.pack(pady=5, ipady=5)
 
+        # Create a label for Jira mode selection
+        self.jira_mode_switch_label = ctk.StringVar(
+            value=JIRA_MODE[self._app_data.jira_mode_var.get()]
+        )
+
+        # jira_mode_switch = ctk.CTkSwitch(
+        #     api_setting_box,
+        #     textvariable=self.jira_mode_switch_label,
+        #     command=self.switch_event,
+        #     variable=self._app_data.jira_mode_var,
+        #     onvalue=0,
+        #     offvalue=1,
+        # )
+        # jira_mode_switch.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
+
         api_validity_label = ctk.CTkLabel(api_setting_box, text="API valid:")
-        api_validity_label.grid(row=0, column=0, padx=10, pady=10)
+        api_validity_label.grid(row=1, column=0, padx=10, pady=10)
 
         self.api_validity_icon = ctk.CTkLabel(api_setting_box)
-        self.api_validity_icon.grid(row=0, column=1, padx=10, pady=10)
-        self.update_api_status_icon()  # Function called in order to initialize icon at app launch
+        self.api_validity_icon.grid(row=1, column=1, padx=10, pady=10)
+        asyncio.run_coroutine_threadsafe(
+            self._app_logic.check_api_token_validity(self.update_api_status_icon),
+            self.loop,
+        )
+        # self.update_api_status_icon()  # Function called in order to initialize icon at app launch
 
         set_api_token_button = ctk.CTkButton(
             api_setting_box, text="Set Jira API Token", command=self.open_token_window
         )
-        set_api_token_button.grid(row=1, column=0, columnspan=2, padx=30, pady=10)
+        set_api_token_button.grid(row=2, column=0, columnspan=2, padx=30, pady=10)
 
         # Button to start the worklog
         # TODO: enable/disable start button
@@ -133,10 +166,14 @@ class App:
         )
         start_worklog_load_button.pack(pady=20)
 
+        progressbar = ctk.CTkProgressBar(
+            main_window, variable=self._app_data.progress_bar_var
+        )
+        progressbar.pack(pady=5, ipady=5)
+
         # Text Logger box
         log_text = ctk.CTkTextbox(
             main_window,
-            height=200,
             width=500,
             state="disabled",
             activate_scrollbars=True,
@@ -198,11 +235,17 @@ class App:
         )
         cancel_button.grid(row=1, column=1, padx=10, pady=10)
 
-    def save_token(self, token_window: ctk.CTkToplevel, token_value: str) -> None:
+    def save_token(
+        self, token_window: ctk.CTkToplevel, token_value: Union[None, str]
+    ) -> None:
         token_window.destroy()
         if token_value is not None:
             self._app_data.api_key_token = token_value
-            self._app_logic.check_api_token_validity()
+            asyncio.run_coroutine_threadsafe(
+                self._app_logic.check_api_token_validity(self.update_api_status_icon),
+                self.loop,
+            )
+
             if self._app_data.is_api_token_valid:
                 CTkMessagebox(
                     title="Success",
@@ -215,7 +258,13 @@ class App:
                 message="Invalid token. Please, try again.",
                 icon="cancel",
             )
-        self.update_api_status_icon()
+
+    def switch_event(self) -> None:
+        self.jira_mode_switch_label.set(JIRA_MODE[self._app_data.jira_mode_var.get()])
+
+        asyncio.run(
+            self._app_logic.check_api_token_validity(self.update_api_status_icon)
+        )
 
     def show_window(self) -> None:
         self._gui.mainloop()
