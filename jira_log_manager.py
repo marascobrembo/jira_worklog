@@ -139,8 +139,8 @@ def log_work_in_batches(
     jira_map (pd.DataFrame): DataFrame mapping the DataFrame indices to JIRA issue keys.
     """
     try:
-        # Fetch the current user's name from JIRA
-        author_name: str = jira.myself()["emailAddress"].lower()
+        # Fetch the current user's ID from JIRA
+        author_ID: str = jira.myself()["accountId"]
     except Exception as e:
         logger.error(f"Failed to fetch author name: {e}")
         raise
@@ -164,7 +164,7 @@ def log_work_in_batches(
                     worklog.started, "%Y-%m-%dT%H:%M:%S.%f%z"
                 ).strftime("%Y-%m-%d")
                 for worklog in existing_worklogs
-                if worklog.author.emailAddress.lower() == author_name
+                if worklog.author.accountId == author_ID
             }
 
             # Create a list of worklog entries to be added
