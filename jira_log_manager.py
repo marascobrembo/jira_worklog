@@ -203,77 +203,84 @@ def log_work_in_batches(
     update_progress_threshold = 5
     log_count = 0
 
-    # Iterate over each issue and its corresponding work log group
-    for issue, group in df_month_to_log.groupby(jira_map):
-        try:
-            # Transform group into a Series and collapse more rows mapped with the same issue
-            group: pd.Series = group.sum()
+    # Iterate over each issues number and its corresponding work log group
+    for issues, group in df_month_to_log.groupby(jira_map):
+        # Transform group into a Series and collapse more rows mapped with the same issue
+        group: pd.Series = group.sum()
 
-            # Fetch existing worklogs for the issue
-            existing_worklogs = jira.worklogs(issue)
+        issues_splitted = issues.split(",")
 
-            # Get a set of days on which the author has already logged work
-            this_author_worklogs_days: set[str] = {
-                datetime.datetime.strptime(
-                    worklog.started, "%Y-%m-%dT%H:%M:%S.%f%z"
-                ).strftime("%Y-%m-%d")
-                for worklog in existing_worklogs
-                if worklog.author.accountId == author_ID
-            }
+        # If activity maps to multiple issues, split the time equally
+        num_issues: int = len(issues_splitted)
+        group_for_issue = group / num_issues
 
-            # Create a list of worklog entries to be added
-            worklog_entries: list[dict[str, Any]] = []
-            for day, hours in group.items():
-                day_str = day.strftime("%Y-%m-%d")
-                if hours and day_str not in this_author_worklogs_days:
-                    if is_issue_open_on_date(issue, day_str, jira):
-                        worklog_entries.append(
-                            {
-                                "timeSpentSeconds": int(hours * HOUR_TO_SECONDS),
-                                "started": day.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
-                            }
-                        )
-                    else:
+        for issue in issues_splitted:
+            try:
+                # Fetch existing worklogs for the issue
+                existing_worklogs = jira.worklogs(issue)
+
+                # Get a set of days on which the author has already logged work
+                this_author_worklogs_days: set[str] = {
+                    datetime.datetime.strptime(
+                        worklog.started, "%Y-%m-%dT%H:%M:%S.%f%z"
+                    ).strftime("%Y-%m-%d")
+                    for worklog in existing_worklogs
+                    if worklog.author.accountId == author_ID
+                }
+
+                # Create a list of worklog entries to be added
+                worklog_entries: list[dict[str, Any]] = []
+                for day, hours in group_for_issue.items():
+                    day_str = day.strftime("%Y-%m-%d")
+                    if hours and day_str not in this_author_worklogs_days:
+                        if is_issue_open_on_date(issue, day_str, jira):
+                            worklog_entries.append(
+                                {
+                                    "timeSpentSeconds": int(hours * HOUR_TO_SECONDS),
+                                    "started": day,
+                                }
+                            )
+                        else:
+                            logger.info(
+                                f"Issue {issue} was not 'open' on {day_str}. Skipping log."
+                            )
+
+                # If there are any worklog entries to add, attempt to log them in JIRA
+                if worklog_entries:
+                    try:
+                        for entry in worklog_entries:
+                            jira.add_worklog(issue=issue, **entry)
                         logger.info(
-                            f"Issue {issue} was not 'open' on {day_str}. Skipping log."
+                            f"Logged {len(worklog_entries)} worklog(s) for issue {issue}"
                         )
 
-            # If there are any worklog entries to add, attempt to log them in JIRA
-            if worklog_entries:
-                try:
-                    for entry in worklog_entries:
-                        jira.add_worklog(issue=issue, **entry)
-                    logger.info(
-                        f"Logged {len(worklog_entries)} worklog(s) for issue {issue}"
-                    )
-
-                except exceptions.JIRAError:
-                    logger.warning(
-                        f"Cannot log work for the issue {issue}, issue might be closed."
-                    )
-            else:
-                # Log information if work has already been logged for these days
-                for day in group.index:
-                    if day.strftime("%Y-%m-%d") in this_author_worklogs_days:
-                        logger.info(
-                            f"Work already logged for issue {issue} on {day.strftime('%Y-%m-%d')}"
+                    except exceptions.JIRAError:
+                        logger.warning(
+                            f"Cannot log work for the issue {issue}, issue might be closed."
                         )
+                else:
+                    # Log information if work has already been logged for these days
+                    for day in group_for_issue.index:
+                        if day.strftime("%Y-%m-%d") in this_author_worklogs_days:
+                            logger.info(
+                                f"Work already logged for issue {issue} on {day.strftime('%Y-%m-%d')}"
+                            )
 
-        except exceptions.JIRAError as e:
-            logger.warning(f"Failed to fetch worklogs for issue {issue}: {e}")
+            except exceptions.JIRAError as e:
+                logger.warning(f"Failed to fetch worklogs for issue {issue}: {e}")
 
-        finally:
-            # Update progress bar in batches
-            log_count += 1
-            if (
-                log_count % update_progress_threshold == 0
-                or log_count == total_worklog_number
-            ):
-                progress_bar_value = progress_bar_value + (
-                    update_progress_threshold * step_size
-                )
-                # Ensure progress bar maxes at 1.0
-                progress_bar_var.set(min(progress_bar_value, 1.0))
+            finally:
+                # Update progress bar in batches
+                log_count += 1
+                if (
+                    log_count % update_progress_threshold == 0
+                    or log_count == total_worklog_number
+                ):
+                    progress_bar_value = progress_bar_value + (
+                        update_progress_threshold * step_size
+                    )
+                    # Ensure progress bar maxes at 1.0
+                    progress_bar_var.set(min(progress_bar_value, 1.0))
 
 
 def load_worklog(
