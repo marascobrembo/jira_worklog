@@ -4,7 +4,7 @@ from typing import Any
 
 import customtkinter as ctk
 import pandas as pd
-from jira import JIRA, exceptions
+from jira import JIRA, Issue, exceptions
 
 from constants import HOUR_TO_SECONDS
 from logging_conf import logger
@@ -128,15 +128,65 @@ def log_work_in_issue(
             logger.info("Work already logged for issue %s for %s", issue, day)
 
 
+def is_issue_open_on_date(issue: str, date: str, jira: JIRA) -> str:
+    """Check if the last status of the issue before a specific date was Open.
+
+    Parameters:
+    issue (str): The Jira issue key.
+    date (str): The date to check, formatted as 'YYYY-MM-DD'.
+    jira (JIRA): Authenticated Jira client instance.
+
+    Returns:
+    str: The issue status on the given date, assuming 'open' as the initial state.
+    """
+    try:
+        # Fetch issue's changelog to get its history
+        issue_changelog = jira.issue(issue, expand="changelog")
+        last_status = "open"  # Default status is 'open' if no transitions occurred before the date
+
+        # Sort histories by creation date in chronological order
+        sorted_histories = sorted(
+            issue_changelog.changelog.histories,
+            key=lambda h: datetime.datetime.strptime(
+                h.created, "%Y-%m-%dT%H:%M:%S.%f%z"
+            ),
+        )
+
+        # Traverse through the sorted changelog and find status transitions
+        for history in sorted_histories:
+            transition_date = datetime.datetime.strptime(
+                history.created, "%Y-%m-%dT%H:%M:%S.%f%z"
+            ).date()
+
+            if transition_date < datetime.datetime.strptime(date, "%Y-%m-%d").date():
+                # Check if there was a status transition before the date
+                for item in history.items:
+                    if item.field == "status":
+                        last_status = (
+                            item.toString.lower()
+                        )  # Update the last known status
+
+            else:
+                # Once we hit a transition after the date, break the loop
+                break
+
+        return last_status == "open"
+
+    except exceptions.JIRAError as e:
+        logger.error(f"Error fetching issue history for {issue}: {e}")
+        return False
+
+
 def log_work_in_batches(
     jira: JIRA, df_month_to_log: pd.DataFrame, jira_map: pd.DataFrame, progress_bar_var
 ) -> None:
-    """Log work hours in batches to JIRA issues based on provided dataframes.
+    """Log work hours in batches to JIRA issues based on provided dataframes. If an activity is linked to multiple issues, time is split equally between them.
 
     Parameters:
     jira (JIRA): An authenticated JIRA client instance.
     df_month_to_log (pd.DataFrame): DataFrame containing the hours of the selected month to be logged.
     jira_map (pd.DataFrame): DataFrame mapping the DataFrame indices to JIRA issue keys.
+    progress_bar_var (tk.Variable): Tkinter variable to update the progress bar.
     """
     try:
         # Fetch the current user's ID from JIRA
@@ -147,7 +197,11 @@ def log_work_in_batches(
 
     total_worklog_number: int = df_month_to_log.shape[0]
     progress_bar_value: float = 0.0
-    step_size: float = 1 / total_worklog_number
+    step_size: float = 1 / total_worklog_number if total_worklog_number else 1
+
+    # Only update progress bar every 5 logs for efficiency
+    update_progress_threshold = 5
+    log_count = 0
 
     # Iterate over each issue and its corresponding work log group
     for issue, group in df_month_to_log.groupby(jira_map):
@@ -168,14 +222,21 @@ def log_work_in_batches(
             }
 
             # Create a list of worklog entries to be added
-            worklog_entries: list[dict[str, Any]] = [
-                {
-                    "timeSpentSeconds": int(hours * HOUR_TO_SECONDS),
-                    "started": day,
-                }
-                for day, hours in group.items()
-                if hours and day.strftime("%Y-%m-%d") not in this_author_worklogs_days
-            ]
+            worklog_entries: list[dict[str, Any]] = []
+            for day, hours in group.items():
+                day_str = day.strftime("%Y-%m-%d")
+                if hours and day_str not in this_author_worklogs_days:
+                    if is_issue_open_on_date(issue, day_str, jira):
+                        worklog_entries.append(
+                            {
+                                "timeSpentSeconds": int(hours * HOUR_TO_SECONDS),
+                                "started": day.strftime("%Y-%m-%dT%H:%M:%S.%f%z"),
+                            }
+                        )
+                    else:
+                        logger.info(
+                            f"Issue {issue} was not 'open' on {day_str}. Skipping log."
+                        )
 
             # If there are any worklog entries to add, attempt to log them in JIRA
             if worklog_entries:
@@ -202,9 +263,17 @@ def log_work_in_batches(
             logger.warning(f"Failed to fetch worklogs for issue {issue}: {e}")
 
         finally:
-            # Increase progress bar step
-            progress_bar_value = progress_bar_value + step_size
-            progress_bar_var.set(progress_bar_value)
+            # Update progress bar in batches
+            log_count += 1
+            if (
+                log_count % update_progress_threshold == 0
+                or log_count == total_worklog_number
+            ):
+                progress_bar_value = progress_bar_value + (
+                    update_progress_threshold * step_size
+                )
+                # Ensure progress bar maxes at 1.0
+                progress_bar_var.set(min(progress_bar_value, 1.0))
 
 
 def load_worklog(
