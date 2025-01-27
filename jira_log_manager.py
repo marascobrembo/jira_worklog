@@ -98,36 +98,6 @@ def parse_input_excel_report(excel_path, req_person) -> pd.DataFrame:
     return df
 
 
-def log_work_in_issue(
-    jira,
-    issue,
-    issue_series,
-) -> None:
-    # Check if the worklog has been already log, in case ignore it
-    this_author_worklogs_days: list[str] = [
-        datetime.datetime.strptime(worklog.started, "%Y-%m-%dT%H:%M:%S.%f%z").strftime(
-            "%Y-%m-%d"
-        )
-        for worklog in jira.worklogs(issue)
-        if worklog.author.name == jira.myself()["name"]
-    ]
-
-    for day, time_spent in issue_series.items():
-        if day.strftime("%Y-%m-%d") not in this_author_worklogs_days:
-            try:
-                jira.add_worklog(
-                    issue=issue,
-                    timeSpentSeconds=HOUR_TO_SECONDS * time_spent,
-                    started=day,
-                )
-            except exceptions.JIRAError:
-                logger.warning(
-                    "Cannot log work for the issue %s, issue is closed.", issue
-                )
-        else:
-            logger.info("Work already logged for issue %s for %s", issue, day)
-
-
 def is_issue_open_on_date(issue: str, date: str, jira: JIRA) -> str:
     """Check if the last status of the issue before a specific date was Open.
 
@@ -141,7 +111,7 @@ def is_issue_open_on_date(issue: str, date: str, jira: JIRA) -> str:
     """
     try:
         # Fetch issue's changelog to get its history
-        issue_changelog = jira.issue(issue, expand="changelog")
+        issue_changelog: Issue = jira.issue(issue, expand="changelog")
         last_status = "open"  # Default status is 'open' if no transitions occurred before the date
 
         # Sort histories by creation date in chronological order
@@ -233,6 +203,7 @@ def log_work_in_batches(
                 for day, hours in group_for_issue.items():
                     day_str = day.strftime("%Y-%m-%d")
                     if hours and day_str not in this_author_worklogs_days:
+                        # New worklog to be log on Jira
                         if is_issue_open_on_date(issue, day_str, jira):
                             worklog_entries.append(
                                 {
@@ -244,6 +215,9 @@ def log_work_in_batches(
                             logger.info(
                                 f"Issue {issue} was not 'open' on {day_str}. Skipping log."
                             )
+                    else:
+                        # Cancellare o modificare il worklog su jira con il valore letto dall'excel se diverso
+                        pass
 
                 # If there are any worklog entries to add, attempt to log them in JIRA
                 if worklog_entries:
@@ -258,7 +232,7 @@ def log_work_in_batches(
                         logger.warning(
                             f"Cannot log work for the issue {issue}, issue might be closed."
                         )
-                else:
+                else:  # FIXME: this message is log only if the issue has no entry date
                     # Log information if work has already been logged for these days
                     for day in group_for_issue.index:
                         if day.strftime("%Y-%m-%d") in this_author_worklogs_days:
@@ -295,39 +269,40 @@ def load_worklog(
     jira_map: pd.DataFrame = parse_jira_map_file(jira_map_file)
 
     # Read the report Excel file
-    df: pd.DataFrame = parse_input_excel_report(excel_report, req_person)
+    try:
+        df: pd.DataFrame = parse_input_excel_report(excel_report, req_person)
 
-    # Keep only the requested month and drop the rest
-    first_day_of_req_month: datetime.datetime = datetime.datetime(
-        2024, req_month, 1, 0, 0
-    )
-    last_day_of_req_month: datetime.datetime = (
-        first_day_of_req_month + pd.offsets.MonthEnd()
-    )
-    # first_day_of_req_month.strftime("%Y-%m-%d %H:%M:%S")
+        # Keep only the requested month and drop the rest
+        first_day_of_req_month: datetime.datetime = datetime.datetime(
+            df.columns[0].year, req_month, 1, 0, 0
+        )
+        last_day_of_req_month: datetime.datetime = (
+            first_day_of_req_month + pd.offsets.MonthEnd()
+        )
+        # first_day_of_req_month.strftime("%Y-%m-%d %H:%M:%S")
 
-    df_month: pd.DataFrame = df.loc[
-        :,
-        first_day_of_req_month:last_day_of_req_month,
-    ].dropna(how="all", axis=0)
+        df_month: pd.DataFrame = df.loc[
+            :,
+            first_day_of_req_month:last_day_of_req_month,
+        ].dropna(how="all", axis=0)
 
-    # Take the Jira issue associated with the row and signalize the ones with no map
-    row_without_jira_issue: list[tuple] = list(
-        set(df_month.index) - set(jira_map.index)
-    )
-    logger.info(
-        "Rows without Jira issues: "
-        + "\n".join([str(i) for i in row_without_jira_issue])
-    )
+        # Take the Jira issue associated with the row and signalize the ones with no map
+        row_without_jira_issue: list[tuple] = list(
+            set(df_month.index) - set(jira_map.index)
+        )
+        logger.info(
+            "Rows without Jira issues: "
+            + "\n".join([str(i) for i in row_without_jira_issue])
+        )
 
-    df_month_to_log: pd.DataFrame = df_month[
-        df_month.index.isin(jira_map.index.to_list())
-    ]
+        df_month_to_log: pd.DataFrame = df_month[
+            df_month.index.isin(jira_map.index.to_list())
+        ]
 
-    # Batch log the related workload if not nan
-    log_work_in_batches(jira, df_month_to_log, jira_map, progress_bar_var)
+        # Batch log the related workload if not nan
+        log_work_in_batches(jira, df_month_to_log, jira_map, progress_bar_var)
 
-    # For each day, log the related workload if not nan
-    # df_month_to_log.apply(lambda x: log_work_in_issue(jira,issue=jira_map[x.name],issue_series=x.dropna()),axis=1)
+        logger.info("Worklog loaded!")
 
-    logger.info("Worklog loaded!")
+    except Exception:
+        logger.error("Missing %s sheet it the file.", req_person)
